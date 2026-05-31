@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>∞ The Infinite Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: #7a6128;
+    --ink: #0a0806;
+    --parchment: #f5ead8;
+    --ember: #c45c26;
+    --mist: rgba(201,168,76,0.08);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #04030a;
+    cursor: none;
+  }
+
+  /* ── Custom Cursor ── */
+  .cursor {
+    position: fixed; top: 0; left: 0;
+    width: 12px; height: 12px;
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: width .2s, height .2s, opacity .2s;
+    mix-blend-mode: difference;
+  }
+  .cursor-trail {
+    position: fixed; top: 0; left: 0;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 50%;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%,-50%);
+    transition: all .18s ease-out;
+  }
+
+  /* ── Star Canvas ── */
+  #stars { position: fixed; inset: 0; z-index: 0; }
+
+  /* ── Vignette overlay ── */
+  .vignette {
+    position: fixed; inset: 0; z-index: 1;
+    background: radial-gradient(ellipse at center,
+      transparent 30%,
+      rgba(4,3,10,0.6) 70%,
+      rgba(4,3,10,0.95) 100%);
+    pointer-events: none;
+  }
+
+  /* ── Scene wrapper ── */
+  #scene {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+    perspective: 1200px;
+  }
+
+  /* ── Layers ── */
+  .layer {
+    position: absolute;
+    width: 540px; max-width: 90vw;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 52px 48px;
+    opacity: 0;
+    transform: scale(0.06);
+    transition: transform 0.72s cubic-bezier(0.22,1,0.36,1),
+                opacity 0.72s cubic-bezier(0.22,1,0.36,1);
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .layer.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+    z-index: 10;
+  }
+  .layer.exiting {
+    opacity: 0;
+    transform: scale(18);
+    z-index: 9;
+  }
+
+  /* ── Card shell ── */
+  .card {
+    position: relative;
+    padding: 52px 44px;
+    background: rgba(10,8,6,0.82);
+    border: 1px solid rgba(201,168,76,0.22);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .card::before {
+    content: '';
+    position: absolute; inset: 6px;
+    border: 1px solid rgba(201,168,76,0.10);
+    pointer-events: none;
+  }
+  /* Ornamental corners */
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background:
+      linear-gradient(to right, var(--gold) 60%, transparent) top left / 40px 1px no-repeat,
+      linear-gradient(to bottom, var(--gold) 60%, transparent) top left / 1px 40px no-repeat,
+      linear-gradient(to left, var(--gold) 60%, transparent) top right / 40px 1px no-repeat,
+      linear-gradient(to bottom, var(--gold) 60%, transparent) top right / 1px 40px no-repeat,
+      linear-gradient(to right, var(--gold) 60%, transparent) bottom left / 40px 1px no-repeat,
+      linear-gradient(to top, var(--gold) 60%, transparent) bottom left / 1px 40px no-repeat,
+      linear-gradient(to left, var(--gold) 60%, transparent) bottom right / 40px 1px no-repeat,
+      linear-gradient(to top, var(--gold) 60%, transparent) bottom right / 1px 40px no-repeat;
+    pointer-events: none;
+  }
+
+  /* ── Entry number / date ── */
+  .entry-meta {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.35em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+
+  /* ── Glyphs / Icons ── */
+  .glyph {
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: var(--gold);
+    line-height: 1;
+    display: block;
+    filter: drop-shadow(0 0 12px rgba(201,168,76,0.5));
+  }
+
+  /* ── Quote / Headline ── */
+  .headline {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(22px, 3.2vw, 32px);
+    font-weight: 300;
+    line-height: 1.4;
+    color: var(--parchment);
+    margin-bottom: 24px;
+    font-style: italic;
+  }
+  .headline em {
+    color: var(--gold-light);
+    font-style: normal;
+  }
+
+  /* ── Body text ── */
+  .body-text {
+    font-family: 'IM Fell English', serif;
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: rgba(245,234,216,0.65);
+    margin-bottom: 20px;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    width: 80px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 20px auto;
+  }
+
+  /* ── Tag ── */
+  .tag {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.4em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+  }
+
+  /* ── Layer-specific colors ── */
+  .layer-1 .card { --accent: #c9a84c; }
+  .layer-2 .card { background: rgba(8,6,12,0.85); --accent: #8b5cf6; border-color: rgba(139,92,246,0.25); }
+  .layer-2 .glyph { color: #a78bfa; filter: drop-shadow(0 0 12px rgba(139,92,246,0.5)); }
+  .layer-2 .headline em { color: #c4b5fd; }
+  .layer-2 .card::after {
+    background:
+      linear-gradient(to right, #8b5cf6 60%, transparent) top left / 40px 1px no-repeat,
+      linear-gradient(to bottom, #8b5cf6 60%, transparent) top left / 1px 40px no-repeat,
+      linear-gradient(to left, #8b5cf6 60%, transparent) top right / 40px 1px no-repeat,
+      linear-gradient(to bottom, #8b5cf6 60%, transparent) top right / 1px 40px no-repeat,
+      linear-gradient(to right, #8b5cf6 60%, transparent) bottom left / 40px 1px no-repeat,
+      linear-gradient(to top, #8b5cf6 60%, transparent) bottom left / 1px 40px no-repeat,
+      linear-gradient(to left, #8b5cf6 60%, transparent) bottom right / 40px 1px no-repeat,
+      linear-gradient(to top, #8b5cf6 60%, transparent) bottom right / 1px 40px no-repeat;
+  }
+  .layer-3 .card { background: rgba(6,12,8,0.85); border-color: rgba(52,211,153,0.22); }
+  .layer-3 .glyph { color: #34d399; filter: drop-shadow(0 0 12px rgba(52,211,153,0.5)); }
+  .layer-3 .headline em { color: #6ee7b7; }
+  .layer-3 .card::after {
+    background:
+      linear-gradient(to right, #34d399 60%, transparent) top left / 40px 1px no-repeat,
+      linear-gradient(to bottom, #34d399 60%, transparent) top left / 1px 40px no-repeat,
+      linear-gradient(to left, #34d399 60%, transparent) top right / 40px 1px no-repeat,
+      linear-gradient(to bottom, #34d399 60%, transparent) top right / 1px 40px no-repeat,
+      linear-gradient(to right, #34d399 60%, transparent) bottom left / 40px 1px no-repeat,
+      linear-gradient(to top, #34d399 60%, transparent) bottom left / 1px 40px no-repeat,
+      linear-gradient(to left, #34d399 60%, transparent) bottom right / 40px 1px no-repeat,
+      linear-gradient(to top, #34d399 60%, transparent) bottom right / 1px 40px no-repeat;
+  }
+  .layer-4 .card { background: rgba(12,4,4,0.85); border-color: rgba(239,68,68,0.22); }
+  .layer-4 .glyph { color: #f87171; filter: drop-shadow(0 0 12px rgba(239,68,68,0.5)); }
+  .layer-4 .headline em { color: #fca5a5; }
+  .layer-4 .card::after {
+    background:
+      linear-gradient(to right, #ef4444 60%, transparent) top left / 40px 1px no-repeat,
+      linear-gradient(to bottom, #ef4444 60%, transparent) top left / 1px 40px no-repeat,
+      linear-gradient(to left, #ef4444 60%, transparent) top right / 40px 1px no-repeat,
+      linear-gradient(to bottom, #ef4444 60%, transparent) top right / 1px 40px no-repeat,
+      linear-gradient(to right, #ef4444 60%, transparent) bottom left / 40px 1px no-repeat,
+      linear-gradient(to top, #ef4444 60%, transparent) bottom left / 1px 40px no-repeat,
+      linear-gradient(to left, #ef4444 60%, transparent) bottom right / 40px 1px no-repeat,
+      linear-gradient(to top, #ef4444 60%, transparent) bottom right / 1px 40px no-repeat;
+  }
+  .layer-5 .card { background: rgba(4,8,16,0.88); border-color: rgba(56,189,248,0.22); }
+  .layer-5 .glyph { color: #38bdf8; filter: drop-shadow(0 0 12px rgba(56,189,248,0.5)); }
+  .layer-5 .headline em { color: #7dd3fc; }
+  .layer-5 .card::after {
+    background:
+      linear-gradient(to right, #38bdf8 60%, transparent) top left / 40px 1px no-repeat,
+      linear-gradient(to bottom, #38bdf8 60%, transparent) top left / 1px 40px no-repeat,
+      linear-gradient(to left, #38bdf8 60%, transparent) top right / 40px 1px no-repeat,
+      linear-gradient(to bottom, #38bdf8 60%, transparent) top right / 1px 40px no-repeat,
+      linear-gradient(to right, #38bdf8 60%, transparent) bottom left / 40px 1px no-repeat,
+      linear-gradient(to top, #38bdf8 60%, transparent) bottom left / 1px 40px no-repeat,
+      linear-gradient(to left, #38bdf8 60%, transparent) bottom right / 40px 1px no-repeat,
+      linear-gradient(to top, #38bdf8 60%, transparent) bottom right / 1px 40px no-repeat;
+  }
+  .layer-6 .card { background: rgba(10,8,6,0.92); border-color: rgba(201,168,76,0.35); }
+
+  /* ── Progress dots ── */
+  #progress {
+    position: fixed; right: 36px; top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex; flex-direction: column; gap: 12px;
+    align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,168,76,0.4);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .dot.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    box-shadow: 0 0 8px rgba(201,168,76,0.6);
+    transform: scale(1.4);
+  }
+  .dot::before {
+    content: attr(data-label);
+    position: absolute; right: 18px; top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    color: rgba(201,168,76,0);
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+  .dot:hover::before { color: rgba(201,168,76,0.7); }
+
+  /* ── Scroll hint ── */
+  #hint {
+    position: fixed; bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    text-align: center;
+    transition: opacity 1s;
+  }
+  #hint.hidden { opacity: 0; pointer-events: none; }
+  .hint-text {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.4em;
+    color: rgba(201,168,76,0.5);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .hint-wheel {
+    width: 22px; height: 34px;
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 12px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .hint-wheel::before {
+    content: '';
+    width: 3px; height: 7px;
+    background: var(--gold);
+    border-radius: 2px;
+    position: absolute; left: 50%; top: 6px;
+    transform: translateX(-50%);
+    animation: scrollDot 1.4s ease-in-out infinite;
+  }
+  @keyframes scrollDot {
+    0%   { top: 6px; opacity: 1; }
+    80%  { top: 18px; opacity: 0; }
+    100% { top: 6px; opacity: 0; }
+  }
+
+  /* ── Entry counter ── */
+  #counter {
+    position: fixed; left: 36px; bottom: 36px;
+    z-index: 100;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: rgba(201,168,76,0.35);
+  }
+  #counter span { color: var(--gold-dim); }
+
+  /* ── Title bar ── */
+  #titlebar {
+    position: fixed; top: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    text-align: center;
+  }
+  .title-main {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.55em;
+    color: rgba(201,168,76,0.45);
+    text-transform: uppercase;
+  }
+
+  /* ── Ambient ring ── */
+  .ring {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    border-radius: 50%;
+    pointer-events: none; z-index: 1;
+    border: 1px solid rgba(201,168,76,0.04);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .ring:nth-child(1) { width: 340px; height: 340px; animation-delay: 0s; }
+  .ring:nth-child(2) { width: 520px; height: 520px; animation-delay: 0.6s; }
+  .ring:nth-child(3) { width: 700px; height: 700px; animation-delay: 1.2s; }
+  .ring:nth-child(4) { width: 900px; height: 900px; animation-delay: 1.8s; }
+  @keyframes breathe {
+    0%,100% { opacity: 0.4; transform: translate(-50%,-50%) scale(1); }
+    50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.015); }
+  }
+
+  /* ── Special: last layer glow ── */
+  .layer-6 .headline { font-size: clamp(18px,2.8vw,28px); }
+  .final-glow {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(201,168,76,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    border-radius: inherit;
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+  @keyframes pulseGlow {
+    0%,100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-trail" id="trail"></div>
+
+<canvas id="stars"></canvas>
+<div class="vignette"></div>
+
+<!-- Ambient rings -->
+<div class="ring"></div>
+<div class="ring"></div>
+<div class="ring"></div>
+<div class="ring"></div>
+
+<!-- Title bar -->
+<div id="titlebar">
+  <div class="title-main">The Infinite Journal</div>
+</div>
+
+<!-- Progress dots -->
+<div id="progress"></div>
+
+<!-- Scroll hint -->
+<div id="hint">
+  <div class="hint-text">Scroll to descend</div>
+  <div class="hint-wheel"></div>
+</div>
+
+<!-- Entry counter -->
+<div id="counter">Entry <span id="curr">01</span> / <span id="total">06</span></div>
+
+<!-- Scene -->
+<div id="scene">
+
+  <!-- Layer 1 – The Opening -->
+  <div class="layer layer-1 active" data-index="0">
+    <div class="card">
+      <div class="entry-meta">Entry I &nbsp;·&nbsp; The Beginning</div>
+      <span class="glyph">✦</span>
+      <div class="headline">
+        "There is a universe<br>inside every <em>quiet moment</em>,<br>waiting to be written."
+      </div>
+      <div class="divider"></div>
+      <div class="body-text">
+        This is not a journal you read from top to bottom.<br>
+        You read it by falling inward — deeper, further, closer<br>
+        to the centre of something true.
+      </div>
+      <div class="tag">Scroll to begin your descent</div>
+    </div>
+  </div>
+
+  <!-- Layer 2 – Memory -->
+  <div class="layer layer-2" data-index="1">
+    <div class="card">
+      <div class="entry-meta">Entry II &nbsp;·&nbsp; Memory</div>
+      <span class="glyph">◈</span>
+      <div class="headline">
+        "Memory does not live<br>in the past — it lives<br>in the <em>texture of now</em>."
+      </div>
+      <div class="divider"></div>
+      <div class="body-text">
+        I remember the smell of rain on warm stone.<br>
+        Not a specific rain — every rain that ever was.<br>
+        The body keeps its own library, ink-stained and infinite.
+      </div>
+      <div class="tag">♦ &nbsp; Residue of the living &nbsp; ♦</div>
+    </div>
+  </div>
+
+  <!-- Layer 3 – Growth -->
+  <div class="layer layer-3" data-index="2">
+    <div class="card">
+      <div class="entry-meta">Entry III &nbsp;·&nbsp; Growth</div>
+      <span class="glyph">⟁</span>
+      <div class="headline">
+        "Every scar is a root.<br>Every root is reaching<br>toward some <em>invisible light</em>."
+      </div>
+      <div class="divider"></div>
+      <div class="body-text">
+        Growth is not a straight line upward.<br>
+        It is a tangle, a spiral, a return.<br>
+        You arrive at the same clearing seven times — each time, taller.
+      </div>
+      <div class="tag">✿ &nbsp; Seasons of the self &nbsp; ✿</div>
+    </div>
+  </div>
+
+  <!-- Layer 4 – Loss -->
+  <div class="layer layer-4" data-index="3">
+    <div class="card">
+      <div class="entry-meta">Entry IV &nbsp;·&nbsp; Loss</div>
+      <span class="glyph">☽</span>
+      <div class="headline">
+        "Grief is love with<br>nowhere to go — so it<br><em>builds a home</em> inside you."
+      </div>
+      <div class="divider"></div>
+      <div class="body-text">
+        I have carried names that no one else will say again.<br>
+        I have kept them warm by speaking them in private,<br>
+        in the rooms of myself that never sleep.
+      </div>
+      <div class="tag">⌘ &nbsp; The things we keep &nbsp; ⌘</div>
+    </div>
+  </div>
+
+  <!-- Layer 5 – Wonder -->
+  <div class="layer layer-5" data-index="4">
+    <div class="card">
+      <div class="entry-meta">Entry V &nbsp;·&nbsp; Wonder</div>
+      <span class="glyph">✧</span>
+      <div class="headline">
+        "The sky is not a ceiling.<br>It is a mirror — and you<br>are <em>what it reflects</em>."
+      </div>
+      <div class="divider"></div>
+      <div class="body-text">
+        I lay on the grass and let the cosmos look back.<br>
+        There was no gap between me and the dark.<br>
+        Only a long, slow breathing — shared.
+      </div>
+      <div class="tag">∞ &nbsp; The edge of the known &nbsp; ∞</div>
+    </div>
+  </div>
+
+  <!-- Layer 6 – Return -->
+  <div class="layer layer-6" data-index="5">
+    <div class="card">
+      <div class="final-glow"></div>
+      <div class="entry-meta">Entry VI &nbsp;·&nbsp; The Centre</div>
+      <span class="glyph">◉</span>
+      <div class="headline">
+        "You have reached the centre<br>of the spiral —<br>and the centre is <em>you</em>,<br>exactly as you are."
+      </div>
+      <div class="divider"></div>
+      <div class="body-text">
+        Here, at the bottom of falling inward,<br>
+        there is only stillness and a single truth:<br>
+        every page you read was always about here,<br>
+        and here was always waiting for you.
+      </div>
+      <div class="divider"></div>
+      <div class="tag">· Scroll up to resurface ·</div>
+    </div>
+  </div>
+
+</div><!-- /scene -->
+
+<script>
+// ── Stars ──────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('stars');
+const ctx    = canvas.getContext('2d');
+let stars    = [];
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  buildStars();
+}
+
+function buildStars() {
+  stars = [];
+  const n = Math.floor((canvas.width * canvas.height) / 2200);
+  for (let i = 0; i < n; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random(),
+      speed: Math.random() * 0.004 + 0.001,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function drawStars(t) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    const alpha = s.a * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,248,220,${alpha})`;
+    ctx.fill();
+  });
+}
+
+// ── Cursor ─────────────────────────────────────────────────────────────────
+const cursor = document.getElementById('cursor');
+const trail  = document.getElementById('trail');
+let mx = 0, my = 0, tx = 0, ty = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx + 'px';
+  cursor.style.top  = my + 'px';
+});
+
+// ── Layers & State ──────────────────────────────────────────────────────────
+const layers     = document.querySelectorAll('.layer');
+const totalLayers = layers.length;
+let currentIndex = 0;
+let isAnimating  = false;
+let scrollBuffer = 0;
+const THRESHOLD  = 120;
+
+// Build progress dots
+const progressEl = document.getElementById('progress');
+const labels = ['Beginning','Memory','Growth','Loss','Wonder','Centre'];
+const dots = [];
+for (let i = 0; i < totalLayers; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.dataset.label = labels[i];
+  d.addEventListener('click', () => goTo(i));
+  progressEl.appendChild(d);
+  dots.push(d);
+}
+
+function updateDots() {
+  dots.forEach((d,i) => d.classList.toggle('active', i === currentIndex));
+}
+
+function updateCounter() {
+  document.getElementById('curr').textContent = String(currentIndex+1).padStart(2,'0');
+}
+
+function goTo(targetIndex) {
+  if (isAnimating || targetIndex === currentIndex) return;
+  if (targetIndex < 0 || targetIndex >= totalLayers) return;
+
+  const fromLayer = layers[currentIndex];
+  const toLayer   = layers[targetIndex];
+  const goingForward = targetIndex > currentIndex;
+
+  isAnimating = true;
+  currentIndex = targetIndex;
+  updateDots();
+  updateCounter();
+
+  if (goingForward) {
+    // current zooms out (scale up & fade)
+    fromLayer.classList.remove('active');
+    fromLayer.classList.add('exiting');
+
+    // incoming zooms in from tiny
+    toLayer.style.transition = 'none';
+    toLayer.style.transform  = 'scale(0.06)';
+    toLayer.style.opacity    = '0';
+    toLayer.classList.add('active');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        toLayer.style.transition = '';
+        toLayer.style.transform  = '';
+        toLayer.style.opacity    = '';
+      });
+    });
+  } else {
+    // going backward: current shrinks to tiny & fades
+    fromLayer.style.transition = 'transform 0.72s cubic-bezier(0.22,1,0.36,1), opacity 0.72s';
+    fromLayer.style.transform  = 'scale(0.06)';
+    fromLayer.style.opacity    = '0';
+
+    // incoming zooms in from large (it was exiting / scaled up)
+    toLayer.classList.remove('exiting');
+    toLayer.style.transition = 'none';
+    toLayer.style.transform  = 'scale(4)';
+    toLayer.style.opacity    = '0';
+    toLayer.classList.add('active');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        toLayer.style.transition = '';
+        toLayer.style.transform  = '';
+        toLayer.style.opacity    = '';
+      });
+    });
+  }
+
+  setTimeout(() => {
+    fromLayer.classList.remove('exiting', 'active');
+    fromLayer.style.transform = '';
+    fromLayer.style.opacity   = '';
+    fromLayer.style.transition = '';
+    isAnimating = false;
+  }, 750);
+}
+
+// ── Wheel ─────────────────────────────────────────────────────────────────
+let wheelTimer = null;
+window.addEventListener('wheel', e => {
+  e.preventDefault();
+  scrollBuffer += e.deltaY;
+
+  if (Math.abs(scrollBuffer) >= THRESHOLD) {
+    const dir = scrollBuffer > 0 ? 1 : -1;
+    scrollBuffer = 0;
+    goTo(currentIndex + dir);
+    // hide hint after first scroll
+    document.getElementById('hint').classList.add('hidden');
+  }
+
+  clearTimeout(wheelTimer);
+  wheelTimer = setTimeout(() => { scrollBuffer = 0; }, 300);
+}, { passive: false });
+
+// ── Keyboard ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') goTo(currentIndex + 1);
+  if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  goTo(currentIndex - 1);
+});
+
+// ── Touch ───────────────────────────────────────────────────────────────────
+let touchStartY = 0;
+document.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dy = touchStartY - e.changedTouches[0].clientY;
+  if (Math.abs(dy) > 50) goTo(currentIndex + (dy > 0 ? 1 : -1));
+}, { passive: true });
+
+// ── Raf loop ─────────────────────────────────────────────────────────────────
+let raf;
+function loop(t) {
+  drawStars(t * 0.001);
+  // smooth trail
+  tx += (mx - tx) * 0.12;
+  ty += (my - ty) * 0.12;
+  trail.style.left = tx + 'px';
+  trail.style.top  = ty + 'px';
+  raf = requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', resize);
+resize();
+updateCounter();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
